@@ -176,15 +176,16 @@ def row_to_activity(row: list[str]) -> Activity:
 
 def store_activities_csv(zipfile: str, store: Store) -> None:
 	locale.setlocale(locale.LC_TIME, LOCALE)
-	for row in read_activities_from_zip(zipfile):
-		activity = row_to_activity(row)
-		store.save_activity_as_string(row)
-		store.save_activity(activity)
+	with store as uow:
+		for row in read_activities_from_zip(zipfile):
+			activity = row_to_activity(row)
+			uow.save_activity_as_string(row)
+			uow.save_activity(activity)
 
 def print_activities(filepath: str) -> None:
 	for activity in read_activities_from_zip(filepath):
 		pprint(dataclasses.asdict(row_to_activity(activity)), sort_dicts=False)
 
-if __name__ is '__main__':
+if __name__ == '__main__':
 	locale.setlocale(locale.LC_TIME, LOCALE)
 	print_activities(sys.argv[1])

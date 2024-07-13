@@ -32,6 +32,16 @@ class SqliteStore(Store):
 		self._create_table_activities_orig()
 		self._create_table_activities()
 
+	def __enter__(self) -> 'SqliteStore':
+		self._connection.execute('BEGIN TRANSACTION')
+		return self
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		if exc_val:
+			self._connection.rollback()
+		else:
+			self._connection.commit()
+
 	def _create_table_activities_orig(self):
 		stmt = f'CREATE TABLE IF NOT EXISTS {self.TBL_FROM_BULKEXPORT_ACTIVITIES_ORIG} '
 		columns = []

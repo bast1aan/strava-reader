@@ -1,10 +1,11 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Sequence
 
 
-class Store(ABC):
+class Store(AbstractContextManager):
 	@abstractmethod
 	def save_activity_as_string(self, activity: Sequence[str]) -> None:...
 	@abstractmethod
