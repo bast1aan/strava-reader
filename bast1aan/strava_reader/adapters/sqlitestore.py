@@ -17,8 +17,8 @@ SQLITE_TYPE_MAP = {
 
 CONV_TO_SQLITE = {
 	bool: lambda v: int(v),
-	datetime: lambda v: time.mktime(v.timetuple()),
-	timedelta: lambda v: v.seconds,
+	datetime: lambda v: v.timestamp(),
+	timedelta: lambda v: v.seconds + v.days * 86400,
 }
 
 class SqliteStore(Store):

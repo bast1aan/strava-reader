@@ -5,7 +5,7 @@ import zipfile
 import dataclasses
 from pprint import pprint
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import TextIOWrapper
 from typing import Iterator, TypeVar, Callable, Mapping
 
@@ -132,7 +132,7 @@ def convert_by_type(v: str, t: type[T]) -> T:
 		exceptions = []
 		for date_format in DATE_FORMATS:
 			try:
-				return datetime.strptime(v_, date_format)
+				return datetime.strptime(v_, date_format).replace(tzinfo=timezone.utc)
 			except ValueError as e:
 				exceptions.append(e)
 		try:
