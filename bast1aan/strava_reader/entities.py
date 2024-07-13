@@ -1,5 +1,14 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Sequence
+
+
+class Store(ABC):
+	@abstractmethod
+	def save_activity_as_string(self, activity: Sequence[str]) -> None:...
+	@abstractmethod
+	def save_activity(self, activity: 'Activity') -> None: ...
 
 
 @dataclass

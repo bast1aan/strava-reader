@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from io import TextIOWrapper
 from typing import Iterator, TypeVar, Callable, Mapping
 
-from bast1aan.strava_reader.entities import Activity
+from bast1aan.strava_reader.entities import Activity, Store
 
 FIELDS_MAPPING_NL = (
 	('Activiteits-ID', 'id'),
@@ -173,6 +173,13 @@ def row_to_activity(row: list[str]) -> Activity:
 		return Activity(**activity)
 	except TypeError as e:
 		raise TypeError(f'Error creating activity from row: {activity}') from e
+
+def store_activities_csv(zipfile: str, store: Store) -> None:
+	locale.setlocale(locale.LC_TIME, LOCALE)
+	for row in read_activities_from_zip(zipfile):
+		activity = row_to_activity(row)
+		store.save_activity_as_string(row)
+		store.save_activity(activity)
 
 def print_activities(filepath: str) -> None:
 	for activity in read_activities_from_zip(filepath):
