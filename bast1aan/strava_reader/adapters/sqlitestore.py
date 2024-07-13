@@ -28,7 +28,7 @@ class SqliteStore(Store):
 	_connection: sqlite3.Connection
 
 	def __init__(self, dbpath: str):
-		self._connection = sqlite3.connect(dbpath)
+		self._connection = sqlite3.connect(dbpath, isolation_level=None)
 		self._create_table_activities_orig()
 		self._create_table_activities()
 
@@ -58,7 +58,6 @@ class SqliteStore(Store):
 			value_placeholders=','.join(['?'] * len(activity))
 		)
 		self._connection.execute(stmt, tuple(activity))
-		self._connection.commit()
 
 	def save_activity(self, activity: Activity) -> None:
 		activity_dict = dataclasses.asdict(activity)
@@ -78,4 +77,3 @@ class SqliteStore(Store):
 			else:
 				items.append(v)
 		self._connection.execute(stmt, tuple(items))
-		self._connection.commit()
