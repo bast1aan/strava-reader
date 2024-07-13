@@ -99,5 +99,5 @@ FIELDS_NL = (
 import dataclasses
 from bast1aan.strava_reader.entities import Activity
 activity_fields = tuple(field.name for field in dataclasses.fields(Activity))
-field_mapping_nl = dict(zip(FIELDS_NL, activity_fields))
+field_mapping_nl = tuple(zip(FIELDS_NL, activity_fields))
 print(field_mapping_nl)
