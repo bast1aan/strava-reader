@@ -1,3 +1,9 @@
+import csv
+import sys
+import zipfile
+from io import TextIOWrapper
+from typing import Iterator
+
 FIELDS_MAPPING_NL = {
 	'Activiteits-ID': 'id',
 	'Datum van activiteit': 'date',
@@ -89,3 +95,18 @@ FIELDS_MAPPING_NL = {
 	'Totaalaantal cycli': 'cyclus_count',
 	'Media': 'media',
 }
+
+def read_activities_from_zip(filepath: str) -> Iterator[dict[str, str]]:
+	with zipfile.ZipFile(filepath, 'r') as archive:
+		with TextIOWrapper(archive.open('activities.csv'), newline='') as csvfile:
+			reader = csv.DictReader(csvfile, fieldnames=tuple(FIELDS_MAPPING_NL.keys()))
+			next(reader)  # skip header row
+			for row in reader:
+				yield row
+
+def print_activities(filepath: str) -> None:
+	for activity in read_activities_from_zip(filepath):
+		print(activity)
+
+if __name__ is '__main__':
+	print_activities(sys.argv[1])
