@@ -1,8 +1,15 @@
 import csv
+import locale
 import sys
 import zipfile
+import dataclasses
+from pprint import pprint
+
+from datetime import datetime, timedelta
 from io import TextIOWrapper
-from typing import Iterator
+from typing import Iterator, TypeVar, Callable, Mapping
+
+from bast1aan.strava_reader.entities import Activity
 
 FIELDS_MAPPING_NL = (
 	('Activiteits-ID', 'id'),
@@ -101,6 +108,49 @@ FIELDS_MAPPING_NL = (
 	('Media', 'media')
 )
 
+DATE_FORMATS_NL = ('%d %b. %Y %H:%M:%S', '%d %b %Y %H:%M:%S')
+
+DATE_FORMATS = DATE_FORMATS_NL
+
+LOCALE = 'nl_NL.UTF8'
+
+FIELDS_MAPPING = FIELDS_MAPPING_NL
+
+ACTIVITY_FIELDS = dataclasses.fields(Activity)
+
+ACTIVITY_FIELD_BY_NAME = {field.name: field for field in ACTIVITY_FIELDS}
+
+T = TypeVar('T')
+
+def convert_by_type(v: str, t: type[T]) -> T:
+	def parseint(v_: str) -> int:
+		if '.' in v_:
+			v_ = v_[:v_.index('.')]
+		return int(v_)
+
+	def parsedatetime(v_: str) -> datetime:
+		exceptions = []
+		for date_format in DATE_FORMATS:
+			try:
+				return datetime.strptime(v_, date_format)
+			except ValueError as e:
+				exceptions.append(e)
+		try:
+			return datetime.utcfromtimestamp(float(v_))
+		except ValueError as e:
+			exceptions.append(e)
+			raise ValueError(f'Cannot parse string {v_} to datetime') from exceptions
+
+	CONVERT_BY_TYPE: Mapping[type[T], Callable[[str], T]] = {
+		str: lambda v: v,
+		datetime: parsedatetime,
+		timedelta: lambda v: timedelta(seconds=float(v)),
+		float: lambda v: float(v.replace(',', '.')),
+		int: parseint,
+	}
+	converter = CONVERT_BY_TYPE.get(t)
+	return converter(v) if converter else t(v)
+
 def read_activities_from_zip(filepath: str) -> Iterator[list[str]]:
 	with zipfile.ZipFile(filepath, 'r') as archive:
 		with TextIOWrapper(archive.open('activities.csv'), newline='') as csvfile:
@@ -109,9 +159,25 @@ def read_activities_from_zip(filepath: str) -> Iterator[list[str]]:
 			for row in reader:
 				yield row
 
+def row_to_activity(row: list[str]) -> Activity:
+	activity = {}
+	for i, v in enumerate(row):
+		csv_field_name, activity_field_name = FIELDS_MAPPING[i]
+		field = ACTIVITY_FIELD_BY_NAME[activity_field_name]
+		try:
+			value = convert_by_type(v, field.type) if v else None
+		except ValueError as e:
+			raise ValueError(f'problem converting csv field \'{csv_field_name}\' (position {i}) to Activity field `{activity_field_name}`') from e
+		activity[activity_field_name] = value
+	try:
+		return Activity(**activity)
+	except TypeError as e:
+		raise TypeError(f'Error creating activity from row: {activity}') from e
+
 def print_activities(filepath: str) -> None:
 	for activity in read_activities_from_zip(filepath):
-		print(tuple(zip((m[0] for m in FIELDS_MAPPING), activity)))
+		pprint(dataclasses.asdict(row_to_activity(activity)), sort_dicts=False)
 
 if __name__ is '__main__':
+	locale.setlocale(locale.LC_TIME, LOCALE)
 	print_activities(sys.argv[1])
