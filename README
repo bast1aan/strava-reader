@@ -1,0 +1,20 @@
+strava-reader
+=============
+
+Program for reading Strava data.
+
+Currently it can convert the `activities.csv' file from an Strava zip (from
+their bulk export functionality, see
+https://support.strava.com/hc/en-us/articles/216918437-Exporting-your-Data-and-Bulk-Export#h_01GG58HC4F1BGQ9PQZZVANN6WF )
+to SQLite, converting types. The entrypoint for this is `store-activities-csv-from-zip-to-sqlite.py'
+Currently only the CSV with dutch headers and date format is implemented, PRs
+welcome for other languages (especially english)
+
+The result will be two tables in db.sqlite3:
+
+frombulkexport_activities_orig: containing all activities with columns as TEXT,
+	except `id' that is an INTENGER PRIMARY KEY
+frombulkexport_actitivies: containing all activities with their types converted.
+
+You can join from both tables to get/check meaningful data, create views, etc.
+See queries.sql
