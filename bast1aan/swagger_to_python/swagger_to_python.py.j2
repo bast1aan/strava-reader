@@ -1,13 +1,15 @@
 from enum import StrEnum
-from typing import Protocol, Sequence
+from typing import Protocol, Sequence, Annotated
 
 {% for typedef in typedefs %}
-{{ typedef.name }} = {{typedef.type}}
+class {{ typedef.name }}({{typedef.type}}):
+    """ {{ typedef.description }} """
 {% endfor %}
 
 
 {% for enum in enums %}
 class {{ enum.name }}({{enum.type}}):
+    """ {{ enum.description }} """
 {% for member in enum.members %}    {{ member }} = "{{ member }}"
 {% endfor %}
 {% endfor %}
@@ -15,6 +17,6 @@ class {{ enum.name }}({{enum.type}}):
 
 {% for cls in classes %}
 class {{ cls.name }}({{cls.parent}}):
-{% for field in cls.fields %}    {{ field.name }}: {{ field.type }}
+{% for field in cls.fields %}    {{ field.name }}: {% if field.description %}Annotated[{{ field.type }}, "{{ field.description }}"]{% else %}{{ field.type }}{% endif %}
 {% endfor %}
 {% endfor %}

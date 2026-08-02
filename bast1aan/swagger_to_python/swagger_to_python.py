@@ -47,6 +47,7 @@ class Enum:
     name: str
     type_: str
     members: list[str]
+    description: str
 
 @dataclass
 class Array:
@@ -54,6 +55,7 @@ class Array:
     fixed_items: int | None
     type_: str
     format: str
+    description: str
 
 
 _refs: dict[str, dict] = {}
@@ -106,7 +108,8 @@ def _convert(input: dict) -> None:
             _classes[class_name] = Enum(
                 name=class_name,
                 type_='StrEnum',
-                members=[choice for choice in v['enum']]
+                members=[choice for choice in v['enum']],
+                description=v.get('description', '')
             )
             continue
         elif v.get('type') == 'array':
@@ -115,6 +118,7 @@ def _convert(input: dict) -> None:
                 fixed_items=int(v['minItems']) if v.get('minItems') and v['minItems'] == v.get('maxItems') else None,
                 type_=v['items']['type'],
                 format=v['items']['format'],
+                description=v.get('description', '')
             )
             continue
         else:
@@ -156,7 +160,7 @@ def _convert(input: dict) -> None:
         _classes[class_name] = Class(
             name=class_name,
             parent=parent_class,
-            fields=fields
+            fields=fields,
         )
 
 def main():
@@ -175,7 +179,8 @@ def main():
             enums.append({
                 'name': class_.name,
                 'type': class_.type_,
-                'members': class_.members
+                'members': class_.members,
+                'description': class_.description,
             })
             continue
         elif isinstance(class_, Array):
@@ -186,6 +191,7 @@ def main():
             typedefs.append({
                 'name': class_.name,
                 'type': type_,
+                'description': class_.description,
             })
             continue
         fields: list[dict] = []
@@ -199,14 +205,15 @@ def main():
             fields.append({
                 'name': field_.name,
                 'type': python_type,
+                'description': field_.description
             })
         classes.append({
             'parent': class_.parent or 'Protocol',
             'fields': fields,
-            'name': class_.name
+            'name': class_.name,
 
         })
-    with open('swagger_to_python.py.j2', 'r') as f:
+    with open(Path(os.path.dirname(__file__)) / 'swagger_to_python.py.j2', 'r') as f:
         template = jinja2.Template(f.read())
 
     print(template.render(
