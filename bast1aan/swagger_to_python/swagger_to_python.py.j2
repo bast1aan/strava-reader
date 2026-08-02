@@ -1,0 +1,20 @@
+from enum import StrEnum
+from typing import Protocol, Sequence
+
+{% for typedef in typedefs %}
+{{ typedef.name }} = {{typedef.type}}
+{% endfor %}
+
+
+{% for enum in enums %}
+class {{ enum.name }}({{enum.type}}):
+{% for member in enum.members %}    {{ member }} = "{{ member }}"
+{% endfor %}
+{% endfor %}
+
+
+{% for cls in classes %}
+class {{ cls.name }}({{cls.parent}}):
+{% for field in cls.fields %}    {{ field.name }}: {{ field.type }}
+{% endfor %}
+{% endfor %}
