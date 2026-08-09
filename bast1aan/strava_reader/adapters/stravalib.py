@@ -1,11 +1,16 @@
+import dataclasses
 import os
 import datetime
+import pickle
 from pathlib import Path
 import json
-from typing import TypedDict, cast
+from typing import cast
 
 import stravalib
 import stravalib.protocol
+from stravalib import strava_model
+
+from bast1aan.strava_reader.entities import ApiActivity
 
 client_id = int(os.environ['STRAVA_CLIENT_ID'])
 client_secret = os.environ['STRAVA_CLIENT_SECRET']
@@ -58,8 +63,47 @@ def main() -> None:
         token_expires=token_info['expires_at']
     )
     activities = client.get_activities(after=datetime.datetime.now() - datetime.timedelta(days=156), limit=10)
-    for activity_summary in activities:
-        print(activity_summary.sport_type)
+    activity = client.get_activity(activity_id=cast(int, next(activities).id))
+    with open('activity.pickle', 'wb') as f:
+        f.write(pickle.dumps(activity))
+    print(repr(activity))
+
+    #for activity_summary in activities:
+    #    print(activity_summary.sport_type)
 
 if __name__ == '__main__':
     main()
+
+
+def _pydantic_to_entity(da: stravalib.strava_model.DetailedActivity) -> ApiActivity:
+    special_fields = {
+        'map_polyline': lambda: da.map.polyline,
+        'map_summary_polyline': lambda: da.map.summary_polyline,
+        'start_lat': lambda: da.start_latlng[0],
+        'start_long': lambda: da.start_latlng[1],
+        'photos_count': lambda: da.photos.count,
+        'photos_primary_id': lambda: da.photos.primary.id,
+        'photos_urls': lambda: json.dumps(da.photos.primary.urls),
+        'gear_distance': lambda: da.gear.distance,
+        'gear_name': lambda: da.gear.name,
+        'map_id': lambda: da.map.id,
+        'end_lat': lambda: da.end_latlng[0],
+        'end_long': lambda: da.end_latlng[1],
+        'athlete_id': lambda: da.athlete.id,
+
+    }
+
+    all_fields = {field.name for field in dataclasses.fields(ApiActivity)}
+
+    special_fields_values = {}
+    for name, get_value in special_fields.items():
+        try:
+            special_fields_values[name] = get_value()
+        except Exception:
+            special_fields_values[name] = None
+
+    activity = ApiActivity(
+        **{field: getattr(da, field) for field in all_fields - special_fields.keys()},
+        **special_fields_values
+    )
+    return activity
