@@ -1,10 +1,11 @@
 import dataclasses
 import sqlite3
+import types
 from datetime import datetime, timedelta
 import time
-from typing import Sequence
+from typing import Sequence, get_args, TypeAliasType, get_origin, Literal
 
-from bast1aan.strava_reader.entities import Activity, Store
+from bast1aan.strava_reader.entities import Activity, Store, ApiActivity, SportType, ActivityType
 
 SQLITE_TYPE_MAP = {
 	int: 'INTEGER',
@@ -19,11 +20,14 @@ CONV_TO_SQLITE = {
 	bool: lambda v: int(v),
 	datetime: lambda v: v.timestamp(),
 	timedelta: lambda v: v.seconds + v.days * 86400,
+	SportType: lambda v: str(v),
+	ActivityType: lambda v: str(v),
 }
 
 class SqliteStore(Store):
 	TBL_FROM_BULKEXPORT_ACTIVITIES_ORIG = 'frombulkexport_activities_orig'
 	TBL_FROM_BULKEXPORT_ACTIVITIES = 'frombulkexport_activities'
+	TBL_API_ACTIVITIES = 'api_activities'
 
 	_connection: sqlite3.Connection
 
@@ -31,6 +35,7 @@ class SqliteStore(Store):
 		self._connection = sqlite3.connect(dbpath, isolation_level=None)
 		self._create_table_activities_orig()
 		self._create_table_activities()
+		self._create_table_api_activities()
 
 	def __enter__(self) -> 'SqliteStore':
 		self._connection.execute('BEGIN TRANSACTION')
@@ -62,6 +67,17 @@ class SqliteStore(Store):
 			columns.append(f'{field.name} {SQLITE_TYPE_MAP[field.type]}')
 		self._connection.execute(stmt + '(' + ','.join(columns) + ')')
 
+	def _create_table_api_activities(self):
+		stmt = f'CREATE TABLE IF NOT EXISTS {self.TBL_API_ACTIVITIES} '
+		columns = []
+		for field in dataclasses.fields(ApiActivity):
+			if field.name == 'id':
+				columns.append(f'id INTEGER PRIMARY KEY')
+				continue
+			t = _resolve_type(field.type)
+			columns.append(f'{field.name} {SQLITE_TYPE_MAP[t]}')
+		self._connection.execute(stmt + '(' + ','.join(columns) + ')')
+
 	def save_activity_as_string(self, activity: Sequence[str]) -> None:
 		stmt = "INSERT INTO {tbl} VALUES({value_placeholders})".format(
 			tbl=self.TBL_FROM_BULKEXPORT_ACTIVITIES_ORIG,
@@ -87,3 +103,43 @@ class SqliteStore(Store):
 			else:
 				items.append(v)
 		self._connection.execute(stmt, tuple(items))
+
+	def save_api_activity(self, activity: ApiActivity) -> None:
+		activity_dict = dataclasses.asdict(activity)
+
+		stmt = "INSERT INTO {tbl} ({fields}) VALUES({value_placeholders})".format(
+			tbl=self.TBL_API_ACTIVITIES,
+			fields=','.join(activity_dict.keys()),
+			value_placeholders=','.join(['?'] * len(activity_dict)),
+		)
+
+		field_types = {field.name: field.type for field in dataclasses.fields(activity)}
+		items = []
+		for k, v in activity_dict.items():
+
+			field_type = _t_without_none(field_types[k])
+			if v and field_type in CONV_TO_SQLITE:
+				items.append(CONV_TO_SQLITE[field_type](v))
+			else:
+				items.append(v)
+		self._connection.execute(stmt, tuple(items))
+
+def _resolve_type[T: type](t: T) -> T:
+	t = _t_without_none(t)
+
+	#handle type aliases
+	if isinstance(t, TypeAliasType):
+		t = _resolve_type(t.evaluate_value())
+
+	# handle Literals
+	if get_origin(t) is Literal:
+		t = type(get_args(t)[0])
+
+	return t
+
+def _t_without_none[T: type](t: T) -> T:
+	args = get_args(t)
+	if len(args) == 2 and types.NoneType in args:
+		# type is optional
+		t = args[0] if args[1] is types.NoneType else args[1]
+	return t

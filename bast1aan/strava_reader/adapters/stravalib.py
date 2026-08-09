@@ -90,6 +90,9 @@ def _pydantic_to_entity(da: stravalib.strava_model.DetailedActivity) -> ApiActiv
         'end_lat': lambda: da.end_latlng[0],
         'end_long': lambda: da.end_latlng[1],
         'athlete_id': lambda: da.athlete.id,
+        'sport_type': lambda: da.sport_type.root,
+        'type': lambda: da.type.root,
+
 
     }
 
