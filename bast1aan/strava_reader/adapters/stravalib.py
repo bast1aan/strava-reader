@@ -4,7 +4,7 @@ import datetime
 import pickle
 from pathlib import Path
 import json
-from typing import cast
+from typing import cast, Iterator
 
 import stravalib
 import stravalib.protocol
@@ -57,22 +57,45 @@ def main() -> None:
         )
         _store_access_info(token_info)
 
-    client = stravalib.Client(
-        access_token=token_info['access_token'],
-        refresh_token=token_info['refresh_token'],
-        token_expires=token_info['expires_at']
-    )
-    activities = client.get_activities(after=datetime.datetime.now() - datetime.timedelta(days=156), limit=10)
-    activity = client.get_activity(activity_id=cast(int, next(activities).id))
-    with open('activity.pickle', 'wb') as f:
-        f.write(pickle.dumps(activity))
-    print(repr(activity))
+    # client = stravalib.Client(
+    #     access_token=token_info['access_token'],
+    #     refresh_token=token_info['refresh_token'],
+    #     token_expires=token_info['expires_at']
+    # )
+    # activities = client.get_activities(after=datetime.datetime.now() - datetime.timedelta(days=156), limit=10)
+    # activity = client.get_activity(activity_id=cast(int, next(activities).id))
+    # with open('activity.pickle', 'wb') as f:
+    #     f.write(pickle.dumps(activity))
+    # print(repr(activity))
 
     #for activity_summary in activities:
     #    print(activity_summary.sport_type)
 
 if __name__ == '__main__':
     main()
+
+
+def get_activities(after: int) -> Iterator[ApiActivity]:
+    token_info = _get_stored_access_info()
+    if not token_info:
+        raise RuntimeError('Not logged in')
+    client = stravalib.Client(
+        access_token=token_info['access_token'],
+        refresh_token=token_info['refresh_token'],
+        token_expires=token_info['expires_at']
+    )
+    after_td = datetime.datetime.fromtimestamp(after)
+    while(True):
+        activity = None
+        activities = client.get_activities(after=after_td, limit=25)
+        for summary_act in activities:
+            activity = client.get_activity(activity_id=cast(int, summary_act.id))
+            yield _pydantic_to_entity(activity)
+        if not activity:
+            break
+        after_td = activity.start_date
+        if after_td is None:
+            break
 
 
 def _pydantic_to_entity(da: stravalib.strava_model.DetailedActivity) -> ApiActivity:
