@@ -15,11 +15,11 @@ def main():
     for activity in get_activities(after):
         with store as uow:
             uow.save_api_activity(activity)
-        sleep(1.0)
+        sleep(10.0)
         x += 1
         if x > 100:
             print(".")
-            sleep(25.0)
+            sleep(600.0)
             x = 0
 
 
