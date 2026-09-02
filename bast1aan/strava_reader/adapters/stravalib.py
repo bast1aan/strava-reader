@@ -4,7 +4,7 @@ import datetime
 import pickle
 from pathlib import Path
 import json
-from typing import cast, Iterator
+from typing import cast, Iterator, Callable
 
 import stravalib
 import stravalib.protocol
@@ -90,7 +90,7 @@ def get_activities(after: int) -> Iterator[ApiActivity]:
         activities = client.get_activities(after=after_td, limit=25)
         for summary_act in activities:
             activity = client.get_activity(activity_id=cast(int, summary_act.id))
-            yield _pydantic_to_entity(activity)
+            yield _pydantic_to_entity(activity, summary_act)
         if not activity:
             break
         after_td = activity.start_date
@@ -98,38 +98,79 @@ def get_activities(after: int) -> Iterator[ApiActivity]:
             break
 
 
-def _pydantic_to_entity(da: stravalib.strava_model.DetailedActivity) -> ApiActivity:
-    special_fields = {
-        'map_polyline': lambda: da.map.polyline,
-        'map_summary_polyline': lambda: da.map.summary_polyline,
-        'start_lat': lambda: da.start_latlng[0],
-        'start_long': lambda: da.start_latlng[1],
-        'photos_count': lambda: da.photos.count,
-        'photos_primary_id': lambda: da.photos.primary.id,
-        'photos_urls': lambda: json.dumps(da.photos.primary.urls),
-        'gear_distance': lambda: da.gear.distance,
-        'gear_name': lambda: da.gear.name,
-        'map_id': lambda: da.map.id,
-        'end_lat': lambda: da.end_latlng[0],
-        'end_long': lambda: da.end_latlng[1],
-        'athlete_id': lambda: da.athlete.id,
-        'sport_type': lambda: da.sport_type.root,
-        'type': lambda: da.type.root,
+class Serializer[T]:
+    model: T
+    def __init__(self, model: T):
+        self.model = model
+
+    def __call__(self, attr: str) -> object | None:
+        try:
+            if hasattr(self, attr):
+                return getattr(self, attr)
+            else:
+                return getattr(self.model, attr)
+        except Exception:
+            return None
 
 
-    }
+class SummaryActivitySerializer(Serializer[stravalib.strava_model.SummaryActivity]):
+    @property
+    def map_polyline(self):
+        return self.model.map.polyline
+    @property
+    def map_summary_polyline(self):
+        return self.model.map.summary_polyline
+    @property
+    def start_lat(self):
+        return self.model.start_latlng.root[0]
+    @property
+    def start_long(self):
+        return self.model.start_latlng.root[1]
+    @property
+    def map_id(self):
+        return self.model.map.id
+    @property
+    def end_lat(self):
+        return self.model.end_latlng.root[0]
+    @property
+    def end_long(self):
+        return self.model.end_latlng.root[1]
+    @property
+    def athlete_id(self):
+        return self.model.athlete.id
+    @property
+    def sport_type(self):
+        return self.model.sport_type.root
+    @property
+    def type(self):
+        return self.model.type.root
+
+
+class DetailedActivitySerializer(Serializer[stravalib.strava_model.DetailedActivity]):
+    @property
+    def photos_count(self):
+        return self.model.photos.count
+    @property
+    def photos_primary_id(self):
+        return self.model.photos.primary.id
+    @property
+    def photos_urls(self):
+        return json.dumps(self.model.photos.primary.urls)
+    @property
+    def gear_distance(self):
+        return self.model.gear.distance
+    @property
+    def gear_name(self):
+        return self.model.gear.name
+
+
+def _pydantic_to_entity(da: stravalib.strava_model.DetailedActivity, sa: stravalib.strava_model.SummaryActivity) -> ApiActivity:
+    sas = SummaryActivitySerializer(sa)
+    das = DetailedActivitySerializer(da)
 
     all_fields = {field.name for field in dataclasses.fields(ApiActivity)}
 
-    special_fields_values = {}
-    for name, get_value in special_fields.items():
-        try:
-            special_fields_values[name] = get_value()
-        except Exception:
-            special_fields_values[name] = None
-
     activity = ApiActivity(
-        **{field: getattr(da, field) for field in all_fields - special_fields.keys()},
-        **special_fields_values
+        **{field: sas(field) or das(field) for field in all_fields},
     )
     return activity
