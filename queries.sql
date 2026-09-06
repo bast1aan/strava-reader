@@ -93,10 +93,23 @@ SELECT
 	fa.avg_speed_on_flat_terrain,
 	fa.time_from_timer,
 	fa.cyclus_count,
+	fa.recovery,
+	fa.with_pet,
+	fa.is_race,
+	fa.is_long_run,
+	fa.is_for_a_purpose,
+	fa.with_child,
+	fa.distance_descending,
+	fa.total_sets,
+	fa.total_retries,
 	fa.media
 	FROM frombulkexport_activities fa JOIN frombulkexport_activities_orig fo ON fa.id = fo.id 
 	;
 	
 SELECT fa.gear, COUNT(fa.gear) FROM frombulkexport_activities fa GROUP BY fa.gear;
 
-SELECT id, date, date_dt, name, "type", distance, description, elapsed_time, elapsed_time2, speed_avg FROM ritten WHERE gear = 'DF 15'
+SELECT id, date, date_dt, name, "type", distance, description, private_note, elapsed_time, elapsed_time2, speed_avg FROM ritten WHERE gear = 'DF 15'
+SELECT id, date, date_dt, name, "type", distance, description, private_note, elapsed_time, elapsed_time2, speed_avg
+	FROM ritten
+	WHERE gear = 'DFXL 426' OR (gear = 'DF 15' AND date_dt > '2025-08-25 17:08:31')
+	;

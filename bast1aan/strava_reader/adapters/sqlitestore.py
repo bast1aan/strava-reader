@@ -1,7 +1,6 @@
 import dataclasses
 import sqlite3
 from datetime import datetime, timedelta
-import time
 from typing import Sequence
 
 from bast1aan.strava_reader.entities import Activity, Store
@@ -82,7 +81,7 @@ class SqliteStore(Store):
 		items = []
 		for k, v in activity_dict.items():
 			field_type = field_types[k]
-			if v and field_type in CONV_TO_SQLITE:
+			if v is not None and field_type in CONV_TO_SQLITE:
 				items.append(CONV_TO_SQLITE[field_type](v))
 			else:
 				items.append(v)

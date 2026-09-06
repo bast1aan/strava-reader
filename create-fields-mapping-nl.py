@@ -93,6 +93,15 @@ FIELDS_NL = (
 	'Gemiddelde vergelijkbare tempo op vlak terrein',
 	'Tijd op de timer',
 	'Totaalaantal cycli',
+	'Herstel',
+	'Met huisdier',
+	'Wedstrijd',
+	'Lange loop',
+	'Voor een doel',
+	'Met kind',
+	'Afstand bergaf',
+	'Totaal aantal sets',
+	'Totaal aantal herhalingen',
 	'Media',
 )
 

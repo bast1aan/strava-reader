@@ -105,10 +105,19 @@ FIELDS_MAPPING_NL = (
 	('Gemiddelde vergelijkbare tempo op vlak terrein', 'avg_speed_on_flat_terrain'),
 	('Tijd op de timer', 'time_from_timer'),
 	('Totaalaantal cycli', 'cyclus_count'),
-	('Media', 'media')
+	('Herstel', 'recovery'),
+	('Met huisdier', 'with_pet'),
+	('Wedstrijd', 'is_race'),
+	('Lange loop', 'is_long_run'),
+	('Voor een doel','is_for_a_purpose'),
+	('Met kind', 'with_child'),
+	('Afstand bergaf', 'distance_descending'),
+	('Totaal aantal sets', 'total_sets'),
+	('Totaal aantal herhalingen', 'total_retries'),
+	('Media', 'media'),
 )
 
-DATE_FORMATS_NL = ('%d %b. %Y %H:%M:%S', '%d %b %Y %H:%M:%S')
+DATE_FORMATS_NL = ('%d %b %Y, %H:%M:%S', '%d %b. %Y %H:%M:%S', '%d %b %Y %H:%M:%S')
 
 DATE_FORMATS = DATE_FORMATS_NL
 
@@ -139,7 +148,7 @@ def convert_by_type(v: str, t: type[T]) -> T:
 			return datetime.utcfromtimestamp(float(v_))
 		except ValueError as e:
 			exceptions.append(e)
-			raise ValueError(f'Cannot parse string {v_} to datetime') from exceptions
+			raise ExceptionGroup(f'Cannot parse string {v_} to datetime', exceptions)
 
 	CONVERT_BY_TYPE: Mapping[type[T], Callable[[str], T]] = {
 		str: lambda v: v,
